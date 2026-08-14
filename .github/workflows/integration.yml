@@ -1,0 +1,12 @@
+name: Integration
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  integration:
+    # Scaffolds each preset with the real CLI and runs gofmt/go vet/go build/go test
+    # on the generated Go project. See PackkitJS/packkit-actions + scripts/integration.mjs.
+    uses: PackkitJS/packkit-actions/.github/workflows/generator-integration.yml@v1
+    with:
+      setup-go: true
