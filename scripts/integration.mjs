@@ -14,11 +14,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'cli.js');
-const ALL_PRESETS = ['go-lib'];
+const ALL_PRESETS = ['go-lib', 'go-cli'];
 const presets = process.argv.slice(2).length ? process.argv.slice(2) : ALL_PRESETS;
 
 // dist name for a project scaffolded as `<preset>-demo` (naming lowercases/hyphenates).
 const distName = (preset) => `${preset}-demo`;
+// the Go package identifier the scaffold derives from that name (lowercase alnum).
+const pkgName = (preset) => distName(preset).replace(/[^a-z0-9]/g, '');
 
 function sh(cmd, args, cwd) {
 	process.stdout.write(`\n$ ${cmd} ${args.join(' ')}   (${cwd})\n`);
@@ -45,6 +47,18 @@ function integrate(preset) {
 		sh('go', ['vet', './...'], project);
 		sh('go', ['build', './...'], project);
 		sh('go', ['test', './...'], project);
+
+		// 3. For a CLI, the built command must actually run and greet.
+		if (preset === 'go-cli') {
+			const out = execFileSync('go', ['run', `./cmd/${pkgName(preset)}`, 'there'], {
+				cwd: project,
+				encoding: 'utf8',
+			});
+			if (!out.includes('Hello, there!')) {
+				throw new Error(`CLI output did not greet as expected. Got: ${JSON.stringify(out)}`);
+			}
+			console.log(`  ✓ command greeted: ${out.trim()}`);
+		}
 		console.log(`=== ${preset}: PASS ===`);
 	} finally {
 		rmSync(workdir, { recursive: true, force: true });

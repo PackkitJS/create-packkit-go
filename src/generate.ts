@@ -16,13 +16,16 @@ export function generate(
 	const config = normalizeConfig(input);
 	const pkg = packageName(config.name);
 
+	// The logic always lives in a testable package at the module root; a CLI adds a
+	// thin cmd/ main that wires it to flags (idiomatic Go — keep main minimal).
 	const files: Record<string, string> = {
 		'go.mod': goMod(config),
 		[`${pkg}.go`]: libGo(config, pkg),
 		[`${pkg}_test.go`]: libTestGo(pkg),
-		'README.md': readme(config),
+		'README.md': readme(config, pkg),
 		'.gitignore': gitignore(),
 	};
+	if (config.target === 'cli') files[`cmd/${pkg}/main.go`] = cliMainGo(config, pkg);
 	if (config.license !== 'none')
 		files['LICENSE'] = licenseText(config.license as 'MIT', authorName(config.author));
 
@@ -84,6 +87,34 @@ function libGo(cfg: GoConfig, pkg: string): string {
 	].join('\n');
 }
 
+// A thin command that keeps zero logic of its own: it parses a flag (or a positional
+// arg) and delegates to the library package, so the behavior stays unit-tested there.
+function cliMainGo(cfg: GoConfig, pkg: string): string {
+	return [
+		`// Command ${pkg} greets a name from the command line.`,
+		'package main',
+		'',
+		'import (',
+		'\t"flag"',
+		'\t"fmt"',
+		'\t"os"',
+		'',
+		`\t"${cfg.module}"`,
+		')',
+		'',
+		'func main() {',
+		'\tname := flag.String("name", "world", "who to greet")',
+		'\tflag.Parse()',
+		'\t// A positional argument wins over the flag: `' + pkg + ' Alice`.',
+		'\tif flag.NArg() > 0 {',
+		'\t\t*name = flag.Arg(0)',
+		'\t}',
+		`\tfmt.Fprintln(os.Stdout, ${pkg}.Greet(*name))`,
+		'}',
+		'',
+	].join('\n');
+}
+
 function libTestGo(pkg: string): string {
 	return [
 		`package ${pkg}`,
@@ -101,8 +132,8 @@ function libTestGo(pkg: string): string {
 	].join('\n');
 }
 
-function readme(cfg: GoConfig): string {
-	return [
+function readme(cfg: GoConfig, pkg: string): string {
+	const lines = [
 		`# ${cfg.name}`,
 		'',
 		`> ${cfg.description || 'A modern Go module scaffolded with [create-packkit-go](https://github.com/PackkitJS/create-packkit-go).'}`,
@@ -115,13 +146,21 @@ function readme(cfg: GoConfig): string {
 		'go vet ./...',
 		'```',
 		'',
-		'## Use',
-		'',
-		'```go',
-		`import "${cfg.module}"`,
-		'```',
-		'',
-	].join('\n');
+	];
+	if (cfg.target === 'cli') {
+		lines.push(
+			'## Run',
+			'',
+			'```sh',
+			`go run ./cmd/${pkg} Alice   # or: --name Alice`,
+			`go install ./cmd/${pkg}     # installs the ${pkg} binary`,
+			'```',
+			'',
+		);
+	} else {
+		lines.push('## Use', '', '```go', `import "${cfg.module}"`, '```', '');
+	}
+	return lines.join('\n');
 }
 
 function gitignore(): string {

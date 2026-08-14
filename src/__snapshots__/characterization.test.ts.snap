@@ -1,5 +1,157 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`characterization: preset output is byte-stable > go-cli matches its snapshot 1`] = `
+{
+  ".gitignore": "# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary / coverage
+*.test
+*.out
+coverage.txt
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Vendored dependencies
+/vendor/
+",
+  "LICENSE": "MIT License
+
+Copyright (c) Fixture Author
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+",
+  "README.md": "# fixture
+
+> A fixture project.
+
+## Develop
+
+\`\`\`sh
+go test ./...
+go build ./...
+go vet ./...
+\`\`\`
+
+## Run
+
+\`\`\`sh
+go run ./cmd/fixture Alice   # or: --name Alice
+go install ./cmd/fixture     # installs the fixture binary
+\`\`\`
+",
+  "cmd/fixture/main.go": "// Command fixture greets a name from the command line.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+
+	"fixture"
+)
+
+func main() {
+	name := flag.String("name", "world", "who to greet")
+	flag.Parse()
+	// A positional argument wins over the flag: \`fixture Alice\`.
+	if flag.NArg() > 0 {
+		*name = flag.Arg(0)
+	}
+	fmt.Fprintln(os.Stdout, fixture.Greet(*name))
+}
+",
+  "fixture.go": "// Package fixture a fixture project.
+package fixture
+
+// Greet returns a friendly greeting for name.
+func Greet(name string) string {
+	return "Hello, " + name + "!"
+}
+",
+  "fixture_test.go": "package fixture
+
+import "testing"
+
+func TestGreet(t *testing.T) {
+	got := Greet("world")
+	want := "Hello, world!"
+	if got != want {
+		t.Errorf("Greet(%q) = %q, want %q", "world", got, want)
+	}
+}
+",
+  "go.mod": "module fixture
+
+go 1.23
+",
+  "packkit.json": "{
+  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "generator": "create-packkit-go",
+  "preset": "go-cli",
+  "settings": {
+    "description": "A fixture project.",
+    "author": "Fixture Author <fixture@example.com>",
+    "target": "cli",
+    "module": "fixture"
+  },
+  "baseline": {
+    "schemaVersion": 1,
+    "files": {
+      ".gitignore": {
+        "hash": "03e99a36ba5c5f"
+      },
+      "LICENSE": {
+        "hash": "086c0b3374a5ed"
+      },
+      "README.md": {
+        "hash": "18bc2116084287"
+      },
+      "cmd/fixture/main.go": {
+        "hash": "1b0c21829acbbf"
+      },
+      "fixture.go": {
+        "hash": "0fb6dd36cc4cdb"
+      },
+      "fixture_test.go": {
+        "hash": "1a787b7b07f0d4"
+      },
+      "go.mod": {
+        "hash": "0b3efcf0a1477b"
+      }
+    },
+    "goMod": {
+      "module": "fixture",
+      "goVersion": "1.23",
+      "require": {}
+    }
+  }
+}
+",
+}
+`;
+
 exports[`characterization: preset output is byte-stable > go-lib matches its snapshot 1`] = `
 {
   ".gitignore": "# Binaries

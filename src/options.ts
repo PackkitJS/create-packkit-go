@@ -2,7 +2,7 @@ import { PackkitGoError } from './errors.js';
 import { modulePath } from './naming.js';
 import type { GoConfig, GoConfigInput, GoTarget } from './types.js';
 
-const TARGETS: GoTarget[] = ['library'];
+const TARGETS: GoTarget[] = ['library', 'cli'];
 const LICENSES = ['MIT', 'none'];
 
 export function defaultConfig(): GoConfig {

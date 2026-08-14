@@ -24,11 +24,12 @@ Every generated project is **`gofmt`-clean and passes `go vet`, `go build`, and
 
 ## Presets
 
-| Preset   | Alias | What you get                                                                                                   |
-| -------- | ----- | -------------------------------------------------------------------------------------------------------------- |
-| `go-lib` | `lib` | Library — `go.mod` module, a documented package with an exported function, a table test, README, `.gitignore`. |
+| Preset   | Alias | What you get                                                                                                                        |
+| -------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `go-lib` | `lib` | Library — `go.mod` module, a documented package with an exported function, a table test, README, `.gitignore`.                      |
+| `go-cli` | `cli` | Command — everything in `go-lib` plus a `cmd/<name>/main.go` that wires the package to flags (logic stays testable in the package). |
 
-More targets (CLI, HTTP service, worker) land in later releases — each emits its own
+More targets (HTTP service, worker) land in later releases — each emits its own
 provider-neutral deployment contract, exactly as the JS and Python generators do.
 
 ## Options
