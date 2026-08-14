@@ -1,6 +1,6 @@
 import type { DeploymentContract, Diagnostic, GeneratedProjectMetadata } from '@packkit/core';
 
-export type GoTarget = 'library' | 'cli';
+export type GoTarget = 'library' | 'cli' | 'worker';
 
 export interface GoConfigInput {
 	name?: string;

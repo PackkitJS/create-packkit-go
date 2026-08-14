@@ -277,3 +277,382 @@ go 1.23
 ",
 }
 `;
+
+exports[`characterization: preset output is byte-stable > go-worker matches its snapshot 1`] = `
+{
+  ".dockerignore": "# Keep the build context lean.
+.git/
+*.test
+*.out
+coverage.txt
+/vendor/
+Dockerfile
+.dockerignore
+README.md
+",
+  ".gitignore": "# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary / coverage
+*.test
+*.out
+coverage.txt
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Vendored dependencies
+/vendor/
+",
+  "Dockerfile": "# Container image for the worker. A worker is a long-running process, NOT an HTTP
+# server — so there is no EXPOSE and no HTTP HEALTHCHECK; liveness is the process.
+FROM golang:1.23 AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -o /bin/worker ./cmd/fixture
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /bin/worker /bin/worker
+# STOPSIGNAL makes \`docker stop\` send SIGTERM so the worker drains before exit.
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/bin/worker"]
+",
+  "LICENSE": "MIT License
+
+Copyright (c) Fixture Author
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+",
+  "README.md": "# fixture
+
+> A fixture project.
+
+## Develop
+
+\`\`\`sh
+go test ./...
+go build ./...
+go vet ./...
+\`\`\`
+
+## Run
+
+A long-running background worker: it reads newline-delimited messages from stdin
+(the demo source seam — swap \`receive\` for your transport), processes each with
+bounded retries, and **drains in-flight work on \`SIGTERM\`/\`SIGINT\` before exiting 0**.
+Logs are JSON lines on stdout; liveness is the process, so there is no HTTP port.
+
+\`\`\`sh
+printf 'one\\ntwo\\n' | go run ./cmd/fixture
+\`\`\`
+
+Container (\`docker stop\` sends \`SIGTERM\`, so the worker drains):
+
+\`\`\`sh
+docker build -t fixture . && docker run -i fixture
+\`\`\`
+
+Tune with \`WORKER_MAX_ATTEMPTS\` (default 3) and \`WORKER_LOG_LEVEL\` (default info).
+",
+  "cmd/fixture/main.go": "// Command fixture runs the background worker until SIGTERM/SIGINT, then drains and exits.
+package main
+
+import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"fixture"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+	os.Exit(fixture.Run(ctx))
+}
+",
+  "go.mod": "module fixture
+
+go 1.23
+",
+  "handler.go": "// Package fixture a fixture project.
+package fixture
+
+import (
+	"errors"
+	"strings"
+)
+
+// Handle processes one message. Pure: no queue, no I/O, no logging. Replace the body
+// with your processing; return an error to signal a failure the worker should retry
+// (and, after WORKER_MAX_ATTEMPTS, route to the poison-message handler).
+func Handle(message string) error {
+	if strings.TrimSpace(message) == "" {
+		return errors.New("empty message")
+	}
+	// TODO: replace with your processing.
+	return nil
+}
+",
+  "handler_test.go": "package fixture
+
+import "testing"
+
+func TestHandleAcceptsAMessage(t *testing.T) {
+	if err := Handle("hello"); err != nil {
+		t.Fatalf("Handle returned an error: %v", err)
+	}
+}
+
+func TestHandleRejectsAnEmptyMessage(t *testing.T) {
+	if err := Handle("   "); err == nil {
+		t.Fatal("expected an error for an empty message")
+	}
+}
+",
+  "packkit.json": "{
+  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "generator": "create-packkit-go",
+  "preset": "go-worker",
+  "settings": {
+    "description": "A fixture project.",
+    "author": "Fixture Author <fixture@example.com>",
+    "target": "worker",
+    "module": "fixture"
+  },
+  "baseline": {
+    "schemaVersion": 1,
+    "files": {
+      ".dockerignore": {
+        "hash": "0a48d4b2bf8485"
+      },
+      ".gitignore": {
+        "hash": "03e99a36ba5c5f"
+      },
+      "Dockerfile": {
+        "hash": "127124ee9198c1"
+      },
+      "LICENSE": {
+        "hash": "086c0b3374a5ed"
+      },
+      "README.md": {
+        "hash": "1907b9268666d4"
+      },
+      "cmd/fixture/main.go": {
+        "hash": "12b77d51157bd2"
+      },
+      "go.mod": {
+        "hash": "0b3efcf0a1477b"
+      },
+      "handler.go": {
+        "hash": "05cfe440cc17e6"
+      },
+      "handler_test.go": {
+        "hash": "0f6928d960074c"
+      },
+      "worker.go": {
+        "hash": "08807917718b04"
+      },
+      "worker_test.go": {
+        "hash": "0124c6be2d4951"
+      }
+    },
+    "goMod": {
+      "module": "fixture",
+      "goVersion": "1.23",
+      "require": {}
+    }
+  }
+}
+",
+  "worker.go": "package fixture
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"io"
+	"os"
+	"strconv"
+)
+
+// Config is the worker's environment-driven configuration.
+type Config struct {
+	MaxAttempts int
+	LogLevel    string
+}
+
+func configFromEnv() Config {
+	cfg := Config{MaxAttempts: 3, LogLevel: "info"}
+	if v := os.Getenv("WORKER_MAX_ATTEMPTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.MaxAttempts = n
+		}
+	}
+	if v := os.Getenv("WORKER_LOG_LEVEL"); v != "" {
+		cfg.LogLevel = v
+	}
+	return cfg
+}
+
+// logEvent emits one structured JSON line on stdout.
+func logEvent(level, event string, fields map[string]any) {
+	entry := map[string]any{"level": level, "event": event}
+	for k, v := range fields {
+		entry[k] = v
+	}
+	line, _ := json.Marshal(entry)
+	os.Stdout.Write(append(line, '\\n'))
+}
+
+// receive is the message-source seam: a demo that reads newline-delimited messages
+// from stdin. Replace with your transport's receive loop (SQS, Kafka, Redis, ...). It
+// closes the channel on EOF; the reader goroutine also stops when ctx is cancelled.
+func receive(ctx context.Context, r io.Reader) <-chan string {
+	out := make(chan string)
+	go func() {
+		defer close(out)
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			select {
+			case out <- scanner.Text():
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return out
+}
+
+// onPoison handles a message that failed every attempt. Default: log and drop. Replace
+// with a dead-letter queue, a table, an alert — whatever poison means for your system.
+func onPoison(message string, err error) {
+	logEvent("error", "poison_message", map[string]any{"message": message, "error": err.Error()})
+}
+
+// process runs the handler with bounded retries.
+func process(message string, cfg Config) {
+	for attempt := 1; attempt <= cfg.MaxAttempts; attempt++ {
+		err := Handle(message)
+		if err == nil {
+			logEvent("info", "handled", map[string]any{"message": message, "attempt": attempt})
+			return
+		}
+		logEvent("warning", "handle_failed", map[string]any{"message": message, "attempt": attempt, "error": err.Error()})
+		if attempt == cfg.MaxAttempts {
+			onPoison(message, err)
+		}
+	}
+}
+
+// Run pulls messages from stdin, processes each with bounded retries, and drains
+// in-flight work when ctx is cancelled (SIGTERM/SIGINT) before returning 0. Liveness is
+// the process itself — no HTTP port, no health endpoint.
+func Run(ctx context.Context) int {
+	cfg := configFromEnv()
+	logEvent("info", "worker_started", map[string]any{"maxAttempts": cfg.MaxAttempts})
+
+	messages := receive(ctx, os.Stdin)
+	processed := 0
+	drained := false
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			drained = true
+			break loop
+		case message, ok := <-messages:
+			if !ok {
+				break loop // the source is exhausted (EOF)
+			}
+			process(message, cfg) // finish this message before re-checking shutdown
+			processed++
+		}
+	}
+	logEvent("info", "worker_stopped", map[string]any{"processed": processed, "drained": drained})
+	return 0
+}
+",
+  "worker_test.go": "package fixture
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+)
+
+func TestWorkerDrainsOnSIGTERMAndExitsZero(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "worker")
+	build := exec.Command("go", "build", "-o", bin, "./cmd/fixture")
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+
+	cmd := exec.Command(bin)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
+
+	if _, err := stdin.Write([]byte("one\\n")); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(500 * time.Millisecond) // let the in-flight message be handled
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("worker exited non-zero: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		_ = cmd.Process.Kill()
+		t.Fatal("worker did not exit within 10s of SIGTERM")
+	}
+
+	if !strings.Contains(out.String(), \`"event":"handled"\`) {
+		t.Errorf("expected a handled event; got:\\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), \`"event":"worker_stopped"\`) {
+		t.Errorf("expected a worker_stopped event; got:\\n%s", out.String())
+	}
+}
+",
+}
+`;
