@@ -8,7 +8,7 @@ name: Release
 # Publishing uses npm OIDC Trusted Publishing — NO NPM_TOKEN, provenance automatic.
 # The publish step lives HERE, in the package's own repo (never delegated to shared
 # CI), so a compromise of packkit-actions can't publish this package. The trusted
-# publisher must be configured on npmjs.com for PackkitJS/create-packkit-go, workflow
+# publisher must be configured on npmjs.com for PackkitLabs/create-packkit-go, workflow
 # file "release.yml".
 on:
   push:

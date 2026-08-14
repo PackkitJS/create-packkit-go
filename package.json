@@ -2,13 +2,13 @@
 	"name": "create-packkit-go",
 	"version": "0.3.1",
 	"description": "Scaffold modern Go projects — go.mod modules, idiomatic layout, table tests — from a CLI or the browser. Packkit's Go generator.",
-	"homepage": "https://github.com/PackkitJS/create-packkit-go#readme",
+	"homepage": "https://github.com/PackkitLabs/create-packkit-go#readme",
 	"bugs": {
-		"url": "https://github.com/PackkitJS/create-packkit-go/issues"
+		"url": "https://github.com/PackkitLabs/create-packkit-go/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/PackkitJS/create-packkit-go.git"
+		"url": "git+https://github.com/PackkitLabs/create-packkit-go.git"
 	},
 	"license": "MIT",
 	"author": "DanMat <dannymatthew@gmail.com>",

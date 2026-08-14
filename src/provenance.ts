@@ -18,7 +18,7 @@ export function provenance(
 	}
 
 	const out = {
-		$schema: 'https://packkitjs.github.io/create-packkit-go/packkit.schema.json',
+		$schema: 'https://packkitlabs.github.io/create-packkit-go/packkit.schema.json',
 		generator: 'create-packkit-go',
 		...(meta.version ? { version: meta.version } : {}),
 		...(meta.preset ? { preset: meta.preset } : {}),

@@ -154,7 +154,7 @@ function readme(cfg: GoConfig, pkg: string): string {
 	const lines = [
 		`# ${cfg.name}`,
 		'',
-		`> ${cfg.description || 'A modern Go module scaffolded with [create-packkit-go](https://github.com/PackkitJS/create-packkit-go).'}`,
+		`> ${cfg.description || 'A modern Go module scaffolded with [create-packkit-go](https://github.com/PackkitLabs/create-packkit-go).'}`,
 		'',
 		'## Develop',
 		'',

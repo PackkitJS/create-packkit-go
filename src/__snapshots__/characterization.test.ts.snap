@@ -107,7 +107,7 @@ func TestGreet(t *testing.T) {
 go 1.23
 ",
   "packkit.json": "{
-  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "$schema": "https://packkitlabs.github.io/create-packkit-go/packkit.schema.json",
   "generator": "create-packkit-go",
   "preset": "go-cli",
   "settings": {
@@ -237,7 +237,7 @@ func TestGreet(t *testing.T) {
 go 1.23
 ",
   "packkit.json": "{
-  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "$schema": "https://packkitlabs.github.io/create-packkit-go/packkit.schema.json",
   "generator": "create-packkit-go",
   "preset": "go-lib",
   "settings": {
@@ -452,7 +452,7 @@ func TestRoot(t *testing.T) {
 }
 ",
   "packkit.json": "{
-  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "$schema": "https://packkitlabs.github.io/create-packkit-go/packkit.schema.json",
   "generator": "create-packkit-go",
   "preset": "go-service",
   "settings": {
@@ -785,7 +785,7 @@ func TestHandleRejectsAnEmptyMessage(t *testing.T) {
 }
 ",
   "packkit.json": "{
-  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "$schema": "https://packkitlabs.github.io/create-packkit-go/packkit.schema.json",
   "generator": "create-packkit-go",
   "preset": "go-worker",
   "settings": {

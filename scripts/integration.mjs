@@ -1,7 +1,7 @@
 // End-to-end integration: scaffold each preset with the REAL built CLI, then run the
 // generated Go project's own toolchain — gofmt (formatting), go vet (static checks),
 // go build, go test. This is create-packkit-go's implementation of the same
-// `test:integration` contract that PackkitJS/packkit-actions' generator-integration
+// `test:integration` contract that PackkitLabs/packkit-actions' generator-integration
 // workflow invokes for every generator; the shared workflow only provisions Go (via
 // setup-go) and stays language-agnostic.
 //

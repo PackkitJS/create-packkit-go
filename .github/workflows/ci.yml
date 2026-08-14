@@ -5,5 +5,5 @@ on:
   pull_request:
 jobs:
   ci:
-    # Shared, language-agnostic CI — runs `npm run check`. See PackkitJS/packkit-actions.
-    uses: PackkitJS/packkit-actions/.github/workflows/generator-ci.yml@v1
+    # Shared, language-agnostic CI — runs `npm run check`. See PackkitLabs/packkit-actions.
+    uses: PackkitLabs/packkit-actions/.github/workflows/generator-ci.yml@v1
