@@ -1,5 +1,14 @@
 # create-packkit-go
 
+## 0.3.2
+
+### Patch Changes
+
+- 4dfa8d1: Update the emitted `packkit.json` `$schema` URL to the renamed org's Pages subdomain
+  (`packkitjs.github.io` → `packkitlabs.github.io`) following the `PackkitJS` → `PackkitLabs`
+  rename, so newly scaffolded projects reference the live schema location. Cosmetic — the
+  `$schema` is an editor-validation hint; no runtime behavior changes.
+
 ## 0.3.1
 
 ### Patch Changes
