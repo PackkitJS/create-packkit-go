@@ -31,6 +31,14 @@ export function generate(
 		files[`cmd/${pkg}/main.go`] = workerMainGo(config, pkg);
 		files['Dockerfile'] = workerDockerfile(config, pkg);
 		files['.dockerignore'] = dockerignore();
+	} else if (config.target === 'service') {
+		files['handler.go'] = serviceHandlerGo(config, pkg);
+		files['handler_test.go'] = serviceHandlerTestGo(pkg);
+		files['server.go'] = serviceServerGo(pkg);
+		files['server_test.go'] = serviceServerTestGo(pkg);
+		files[`cmd/${pkg}/main.go`] = serviceMainGo(config, pkg);
+		files['Dockerfile'] = serviceDockerfile(config, pkg);
+		files['.dockerignore'] = dockerignore();
 	} else {
 		files[`${pkg}.go`] = libGo(config, pkg);
 		files[`${pkg}_test.go`] = libTestGo(pkg);
@@ -165,6 +173,27 @@ function readme(cfg: GoConfig, pkg: string): string {
 			`go run ./cmd/${pkg} Alice   # or: --name Alice`,
 			`go install ./cmd/${pkg}     # installs the ${pkg} binary`,
 			'```',
+			'',
+		);
+	} else if (cfg.target === 'service') {
+		lines.push(
+			'## Run',
+			'',
+			'An HTTP service on `net/http`. It binds `$PORT` (default 8080), serves `/` and a',
+			'`/healthz` liveness probe, logs JSON lines on stdout, and **drains in-flight requests',
+			'on `SIGTERM`/`SIGINT`** before exiting 0.',
+			'',
+			'```sh',
+			`go run ./cmd/${pkg}   # then: curl localhost:8080/healthz`,
+			'```',
+			'',
+			'Container (`docker stop` sends `SIGTERM`, so the server drains):',
+			'',
+			'```sh',
+			`docker build -t ${pkg} . && docker run -p 8080:8080 ${pkg}`,
+			'```',
+			'',
+			'Set `PORT` to change the listen port.',
 			'',
 		);
 	} else if (cfg.target === 'worker') {
@@ -443,6 +472,250 @@ function workerTestGo(pkg: string): string {
 		'\t\tt.Errorf("expected a worker_stopped event; got:\\n%s", out.String())',
 		'\t}',
 		'}',
+		'',
+	].join('\n');
+}
+
+// The HTTP router is the testable seam: exercised with net/http/httptest, no port.
+function serviceHandlerGo(cfg: GoConfig, pkg: string): string {
+	return [
+		`// Package ${pkg} ${packageSummary(cfg, 'is an HTTP service; NewHandler builds its router.')}`,
+		`package ${pkg}`,
+		'',
+		'import (',
+		'\t"encoding/json"',
+		'\t"net/http"',
+		')',
+		'',
+		'// NewHandler builds the service router. Kept separate from the server so it can be',
+		'// exercised with net/http/httptest — no port, no process. Add your routes here.',
+		'func NewHandler() http.Handler {',
+		'\tmux := http.NewServeMux()',
+		'\tmux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {',
+		'\t\twriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})',
+		'\t})',
+		'\tmux.HandleFunc("GET /", func(w http.ResponseWriter, _ *http.Request) {',
+		'\t\twriteJSON(w, http.StatusOK, map[string]string{"message": "Hello, world!"})',
+		'\t})',
+		'\treturn mux',
+		'}',
+		'',
+		'func writeJSON(w http.ResponseWriter, status int, body any) {',
+		'\tw.Header().Set("Content-Type", "application/json")',
+		'\tw.WriteHeader(status)',
+		'\t_ = json.NewEncoder(w).Encode(body)',
+		'}',
+		'',
+	].join('\n');
+}
+
+function serviceHandlerTestGo(pkg: string): string {
+	return [
+		`package ${pkg}`,
+		'',
+		'import (',
+		'\t"net/http"',
+		'\t"net/http/httptest"',
+		'\t"testing"',
+		')',
+		'',
+		'func TestHealthz(t *testing.T) {',
+		'\treq := httptest.NewRequest(http.MethodGet, "/healthz", nil)',
+		'\trec := httptest.NewRecorder()',
+		'\tNewHandler().ServeHTTP(rec, req)',
+		'\tif rec.Code != http.StatusOK {',
+		'\t\tt.Fatalf("GET /healthz = %d, want %d", rec.Code, http.StatusOK)',
+		'\t}',
+		'\tif ct := rec.Header().Get("Content-Type"); ct != "application/json" {',
+		'\t\tt.Errorf("Content-Type = %q, want application/json", ct)',
+		'\t}',
+		'}',
+		'',
+		'func TestRoot(t *testing.T) {',
+		'\treq := httptest.NewRequest(http.MethodGet, "/", nil)',
+		'\trec := httptest.NewRecorder()',
+		'\tNewHandler().ServeHTTP(rec, req)',
+		'\tif rec.Code != http.StatusOK {',
+		'\t\tt.Fatalf("GET / = %d, want %d", rec.Code, http.StatusOK)',
+		'\t}',
+		'}',
+		'',
+	].join('\n');
+}
+
+// The server: binds $PORT, and on ctx cancel (SIGTERM/SIGINT) drains in-flight requests
+// via http.Server.Shutdown before returning — graceful shutdown, liveness is the port.
+function serviceServerGo(pkg: string): string {
+	return [
+		`package ${pkg}`,
+		'',
+		'import (',
+		'\t"context"',
+		'\t"encoding/json"',
+		'\t"errors"',
+		'\t"net/http"',
+		'\t"os"',
+		'\t"time"',
+		')',
+		'',
+		'// Run starts the HTTP server on $PORT (default 8080) and blocks until ctx is',
+		'// cancelled, then gracefully drains in-flight requests before returning. The int is',
+		'// an exit code for main to pass to os.Exit.',
+		'func Run(ctx context.Context) int {',
+		'\tport := os.Getenv("PORT")',
+		'\tif port == "" {',
+		'\t\tport = "8080"',
+		'\t}',
+		'\tsrv := &http.Server{Addr: ":" + port, Handler: NewHandler()}',
+		'',
+		'\terrCh := make(chan error, 1)',
+		'\tgo func() {',
+		'\t\tlogEvent("service_started", map[string]any{"port": port})',
+		'\t\tif err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {',
+		'\t\t\terrCh <- err',
+		'\t\t}',
+		'\t}()',
+		'',
+		'\tselect {',
+		'\tcase <-ctx.Done():',
+		'\t\tlogEvent("shutdown_requested", nil)',
+		'\tcase err := <-errCh:',
+		'\t\tlogEvent("server_error", map[string]any{"error": err.Error()})',
+		'\t\treturn 1',
+		'\t}',
+		'',
+		'\tshutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)',
+		'\tdefer cancel()',
+		'\tif err := srv.Shutdown(shutdownCtx); err != nil {',
+		'\t\tlogEvent("shutdown_error", map[string]any{"error": err.Error()})',
+		'\t\treturn 1',
+		'\t}',
+		'\tlogEvent("service_stopped", nil)',
+		'\treturn 0',
+		'}',
+		'',
+		'// logEvent emits one structured JSON line on stdout.',
+		'func logEvent(event string, fields map[string]any) {',
+		'\tentry := map[string]any{"event": event}',
+		'\tfor k, v := range fields {',
+		'\t\tentry[k] = v',
+		'\t}',
+		'\tline, _ := json.Marshal(entry)',
+		"\tos.Stdout.Write(append(line, '\\n'))",
+		'}',
+		'',
+	].join('\n');
+}
+
+// Boots the real server on an ephemeral port, hits /healthz, then cancels the context
+// and asserts a graceful shutdown (Run returns 0).
+function serviceServerTestGo(pkg: string): string {
+	return [
+		`package ${pkg}`,
+		'',
+		'import (',
+		'\t"context"',
+		'\t"net"',
+		'\t"net/http"',
+		'\t"testing"',
+		'\t"time"',
+		')',
+		'',
+		'func TestServerServesHealthzAndShutsDownGracefully(t *testing.T) {',
+		'\tport := freePort(t)',
+		'\tt.Setenv("PORT", port)',
+		'',
+		'\tctx, cancel := context.WithCancel(context.Background())',
+		'\tdone := make(chan int, 1)',
+		'\tgo func() { done <- Run(ctx) }()',
+		'',
+		'\tbase := "http://127.0.0.1:" + port',
+		'\twaitReady(t, base+"/healthz")',
+		'\tresp, err := http.Get(base + "/healthz")',
+		'\tif err != nil {',
+		'\t\tt.Fatalf("GET /healthz: %v", err)',
+		'\t}',
+		'\tresp.Body.Close()',
+		'\tif resp.StatusCode != http.StatusOK {',
+		'\t\tt.Fatalf("GET /healthz = %d, want 200", resp.StatusCode)',
+		'\t}',
+		'',
+		'\tcancel() // triggers graceful shutdown',
+		'\tselect {',
+		'\tcase code := <-done:',
+		'\t\tif code != 0 {',
+		'\t\t\tt.Fatalf("Run returned %d, want 0", code)',
+		'\t\t}',
+		'\tcase <-time.After(10 * time.Second):',
+		'\t\tt.Fatal("server did not shut down within 10s")',
+		'\t}',
+		'}',
+		'',
+		'// freePort reserves an ephemeral port and releases it for the server to rebind.',
+		'func freePort(t *testing.T) string {',
+		'\tt.Helper()',
+		'\tln, err := net.Listen("tcp", "127.0.0.1:0")',
+		'\tif err != nil {',
+		'\t\tt.Fatal(err)',
+		'\t}',
+		'\tdefer ln.Close()',
+		'\t_, port, _ := net.SplitHostPort(ln.Addr().String())',
+		'\treturn port',
+		'}',
+		'',
+		'func waitReady(t *testing.T, url string) {',
+		'\tt.Helper()',
+		'\tfor range 100 {',
+		'\t\tresp, err := http.Get(url)',
+		'\t\tif err == nil {',
+		'\t\t\tresp.Body.Close()',
+		'\t\t\treturn',
+		'\t\t}',
+		'\t\ttime.Sleep(50 * time.Millisecond)',
+		'\t}',
+		'\tt.Fatal("server never became ready")',
+		'}',
+		'',
+	].join('\n');
+}
+
+function serviceMainGo(cfg: GoConfig, pkg: string): string {
+	return [
+		`// Command ${pkg} runs the HTTP service until SIGTERM/SIGINT, then drains and exits.`,
+		'package main',
+		'',
+		'import (',
+		'\t"context"',
+		'\t"os"',
+		'\t"os/signal"',
+		'\t"syscall"',
+		'',
+		`\t"${cfg.module}"`,
+		')',
+		'',
+		'func main() {',
+		'\tctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)',
+		'\tdefer stop()',
+		`\tos.Exit(${pkg}.Run(ctx))`,
+		'}',
+		'',
+	].join('\n');
+}
+
+function serviceDockerfile(cfg: GoConfig, pkg: string): string {
+	return [
+		'# Container image for the HTTP service. It listens on 8080 (override with PORT).',
+		`FROM golang:${cfg.goVersion} AS build`,
+		'WORKDIR /src',
+		'COPY . .',
+		`RUN CGO_ENABLED=0 go build -o /bin/server ./cmd/${pkg}`,
+		'',
+		'FROM gcr.io/distroless/static-debian12:nonroot',
+		'COPY --from=build /bin/server /bin/server',
+		'EXPOSE 8080',
+		'# STOPSIGNAL makes `docker stop` send SIGTERM so the server drains before exit.',
+		'STOPSIGNAL SIGTERM',
+		'ENTRYPOINT ["/bin/server"]',
 		'',
 	].join('\n');
 }

@@ -278,6 +278,359 @@ go 1.23
 }
 `;
 
+exports[`characterization: preset output is byte-stable > go-service matches its snapshot 1`] = `
+{
+  ".dockerignore": "# Keep the build context lean.
+.git/
+*.test
+*.out
+coverage.txt
+/vendor/
+Dockerfile
+.dockerignore
+README.md
+",
+  ".gitignore": "# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary / coverage
+*.test
+*.out
+coverage.txt
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Vendored dependencies
+/vendor/
+",
+  "Dockerfile": "# Container image for the HTTP service. It listens on 8080 (override with PORT).
+FROM golang:1.23 AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -o /bin/server ./cmd/fixture
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /bin/server /bin/server
+EXPOSE 8080
+# STOPSIGNAL makes \`docker stop\` send SIGTERM so the server drains before exit.
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/bin/server"]
+",
+  "LICENSE": "MIT License
+
+Copyright (c) Fixture Author
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+",
+  "README.md": "# fixture
+
+> A fixture project.
+
+## Develop
+
+\`\`\`sh
+go test ./...
+go build ./...
+go vet ./...
+\`\`\`
+
+## Run
+
+An HTTP service on \`net/http\`. It binds \`$PORT\` (default 8080), serves \`/\` and a
+\`/healthz\` liveness probe, logs JSON lines on stdout, and **drains in-flight requests
+on \`SIGTERM\`/\`SIGINT\`** before exiting 0.
+
+\`\`\`sh
+go run ./cmd/fixture   # then: curl localhost:8080/healthz
+\`\`\`
+
+Container (\`docker stop\` sends \`SIGTERM\`, so the server drains):
+
+\`\`\`sh
+docker build -t fixture . && docker run -p 8080:8080 fixture
+\`\`\`
+
+Set \`PORT\` to change the listen port.
+",
+  "cmd/fixture/main.go": "// Command fixture runs the HTTP service until SIGTERM/SIGINT, then drains and exits.
+package main
+
+import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"fixture"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+	os.Exit(fixture.Run(ctx))
+}
+",
+  "go.mod": "module fixture
+
+go 1.23
+",
+  "handler.go": "// Package fixture a fixture project.
+package fixture
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// NewHandler builds the service router. Kept separate from the server so it can be
+// exercised with net/http/httptest — no port, no process. Add your routes here.
+func NewHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Hello, world!"})
+	})
+	return mux
+}
+
+func writeJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}
+",
+  "handler_test.go": "package fixture
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestHealthz(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+	NewHandler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /healthz = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+}
+
+func TestRoot(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	NewHandler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET / = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+",
+  "packkit.json": "{
+  "$schema": "https://packkitjs.github.io/create-packkit-go/packkit.schema.json",
+  "generator": "create-packkit-go",
+  "preset": "go-service",
+  "settings": {
+    "description": "A fixture project.",
+    "author": "Fixture Author <fixture@example.com>",
+    "target": "service",
+    "module": "fixture"
+  },
+  "baseline": {
+    "schemaVersion": 1,
+    "files": {
+      ".dockerignore": {
+        "hash": "0a48d4b2bf8485"
+      },
+      ".gitignore": {
+        "hash": "03e99a36ba5c5f"
+      },
+      "Dockerfile": {
+        "hash": "1ce0e301166b5e"
+      },
+      "LICENSE": {
+        "hash": "086c0b3374a5ed"
+      },
+      "README.md": {
+        "hash": "1a0e3c2ab8182c"
+      },
+      "cmd/fixture/main.go": {
+        "hash": "022abc3d92f878"
+      },
+      "go.mod": {
+        "hash": "0b3efcf0a1477b"
+      },
+      "handler.go": {
+        "hash": "003f138b47b784"
+      },
+      "handler_test.go": {
+        "hash": "044c1265ca6118"
+      },
+      "server.go": {
+        "hash": "0ad75d39578f98"
+      },
+      "server_test.go": {
+        "hash": "1baa2bfd2c73fb"
+      }
+    },
+    "goMod": {
+      "module": "fixture",
+      "goVersion": "1.23",
+      "require": {}
+    }
+  }
+}
+",
+  "server.go": "package fixture
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"os"
+	"time"
+)
+
+// Run starts the HTTP server on $PORT (default 8080) and blocks until ctx is
+// cancelled, then gracefully drains in-flight requests before returning. The int is
+// an exit code for main to pass to os.Exit.
+func Run(ctx context.Context) int {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	srv := &http.Server{Addr: ":" + port, Handler: NewHandler()}
+
+	errCh := make(chan error, 1)
+	go func() {
+		logEvent("service_started", map[string]any{"port": port})
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		logEvent("shutdown_requested", nil)
+	case err := <-errCh:
+		logEvent("server_error", map[string]any{"error": err.Error()})
+		return 1
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logEvent("shutdown_error", map[string]any{"error": err.Error()})
+		return 1
+	}
+	logEvent("service_stopped", nil)
+	return 0
+}
+
+// logEvent emits one structured JSON line on stdout.
+func logEvent(event string, fields map[string]any) {
+	entry := map[string]any{"event": event}
+	for k, v := range fields {
+		entry[k] = v
+	}
+	line, _ := json.Marshal(entry)
+	os.Stdout.Write(append(line, '\\n'))
+}
+",
+  "server_test.go": "package fixture
+
+import (
+	"context"
+	"net"
+	"net/http"
+	"testing"
+	"time"
+)
+
+func TestServerServesHealthzAndShutsDownGracefully(t *testing.T) {
+	port := freePort(t)
+	t.Setenv("PORT", port)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan int, 1)
+	go func() { done <- Run(ctx) }()
+
+	base := "http://127.0.0.1:" + port
+	waitReady(t, base+"/healthz")
+	resp, err := http.Get(base + "/healthz")
+	if err != nil {
+		t.Fatalf("GET /healthz: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /healthz = %d, want 200", resp.StatusCode)
+	}
+
+	cancel() // triggers graceful shutdown
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("Run returned %d, want 0", code)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("server did not shut down within 10s")
+	}
+}
+
+// freePort reserves an ephemeral port and releases it for the server to rebind.
+func freePort(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	_, port, _ := net.SplitHostPort(ln.Addr().String())
+	return port
+}
+
+func waitReady(t *testing.T, url string) {
+	t.Helper()
+	for range 100 {
+		resp, err := http.Get(url)
+		if err == nil {
+			resp.Body.Close()
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("server never became ready")
+}
+",
+}
+`;
+
 exports[`characterization: preset output is byte-stable > go-worker matches its snapshot 1`] = `
 {
   ".dockerignore": "# Keep the build context lean.

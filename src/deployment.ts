@@ -23,5 +23,23 @@ export function deriveDeploymentContract(config: GoConfig): DeploymentContract {
 			optionalEnvironmentVariables: ['WORKER_MAX_ATTEMPTS', 'WORKER_LOG_LEVEL'],
 		};
 	}
+	if (config.target === 'service') {
+		const pkg = packageName(config.name);
+		// The language-neutral `service` contract (core 0.4.0): a long-running HTTP
+		// process whose liveness is a port + health path. `runtime` names the language
+		// exactly like the JS ('node') and Python ('python-3.12') services do.
+		return {
+			type: 'service',
+			runtime: `go-${config.goVersion}`,
+			buildCommand: `go build -o ${pkg} ./cmd/${pkg}`,
+			startCommand: `./${pkg}`,
+			defaultPort: 8080,
+			portEnvironmentVariable: 'PORT',
+			healthCheckPath: '/healthz',
+			containerFile: 'Dockerfile',
+			requiredEnvironmentVariables: [],
+			optionalEnvironmentVariables: ['PORT'],
+		};
+	}
 	return { type: 'library', buildCommand: 'go build ./...' };
 }

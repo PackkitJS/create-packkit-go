@@ -14,7 +14,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'cli.js');
-const ALL_PRESETS = ['go-lib', 'go-cli', 'go-worker'];
+const ALL_PRESETS = ['go-lib', 'go-cli', 'go-worker', 'go-service'];
 const presets = process.argv.slice(2).length ? process.argv.slice(2) : ALL_PRESETS;
 
 // dist name for a project scaffolded as `<preset>-demo` (naming lowercases/hyphenates).

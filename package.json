@@ -84,6 +84,6 @@
 		"vitest": "^4.0.0"
 	},
 	"dependencies": {
-		"@packkit/core": "^0.3.0"
+		"@packkit/core": "^0.4.0"
 	}
 }

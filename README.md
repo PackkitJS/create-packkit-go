@@ -24,14 +24,16 @@ Every generated project is **`gofmt`-clean and passes `go vet`, `go build`, and
 
 ## Presets
 
-| Preset      | Alias    | What you get                                                                                                                                            |
-| ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `go-lib`    | `lib`    | Library — `go.mod` module, a documented package with an exported function, a table test, README, `.gitignore`.                                          |
-| `go-cli`    | `cli`    | Command — everything in `go-lib` plus a `cmd/<name>/main.go` that wires the package to flags (logic stays testable in the package).                     |
-| `go-worker` | `worker` | Background worker — a testable `Handle` seam, a runner that drains on `SIGTERM` and exits 0, JSON logs, retries + poison hook, distroless `Dockerfile`. |
+| Preset       | Alias            | What you get                                                                                                                                                                    |
+| ------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `go-lib`     | `lib`            | Library — `go.mod` module, a documented package with an exported function, a table test, README, `.gitignore`.                                                                  |
+| `go-cli`     | `cli`            | Command — everything in `go-lib` plus a `cmd/<name>/main.go` that wires the package to flags (logic stays testable in the package).                                             |
+| `go-worker`  | `worker`         | Background worker — a testable `Handle` seam, a runner that drains on `SIGTERM` and exits 0, JSON logs, retries + poison hook, distroless `Dockerfile`.                         |
+| `go-service` | `service`, `svc` | HTTP service — `net/http` server on `$PORT`, `/` + `/healthz`, JSON logs, graceful shutdown, an `httptest` handler test + a live-server shutdown test, distroless `Dockerfile`. |
 
-A `go-service` (HTTP) target lands in a later release. Each target emits its own
-provider-neutral deployment contract, exactly as the JS and Python generators do.
+Each target emits its own provider-neutral deployment contract, exactly as the JS and
+Python generators do — `go-service` emits the language-neutral `service` contract
+(`runtime: "go-1.x"`), the same contract shape a Node or Python HTTP service uses.
 
 ## Options
 
