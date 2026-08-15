@@ -52,6 +52,7 @@
 		"version": "changeset version",
 		"release": "npm run build && changeset publish",
 		"check:pkg": "publint && attw --pack --profile esm-only",
+		"check:freshness": "npm run build && node scripts/check-freshness.mjs",
 		"check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run check:pkg",
 		"test:integration": "npm run build && node scripts/integration.mjs"
 	},

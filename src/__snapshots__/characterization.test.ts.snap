@@ -314,7 +314,7 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -o /bin/server ./cmd/fixture
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /bin/server /bin/server
 EXPOSE 8080
 # STOPSIGNAL makes \`docker stop\` send SIGTERM so the server drains before exit.
@@ -471,7 +471,7 @@ func TestRoot(t *testing.T) {
         "hash": "03e99a36ba5c5f"
       },
       "Dockerfile": {
-        "hash": "1ce0e301166b5e"
+        "hash": "079daa03b56396"
       },
       "LICENSE": {
         "hash": "086c0b3374a5ed"
@@ -668,7 +668,7 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -o /bin/worker ./cmd/fixture
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /bin/worker /bin/worker
 # STOPSIGNAL makes \`docker stop\` send SIGTERM so the worker drains before exit.
 STOPSIGNAL SIGTERM
@@ -804,7 +804,7 @@ func TestHandleRejectsAnEmptyMessage(t *testing.T) {
         "hash": "03e99a36ba5c5f"
       },
       "Dockerfile": {
-        "hash": "127124ee9198c1"
+        "hash": "1b9c34a593a706"
       },
       "LICENSE": {
         "hash": "086c0b3374a5ed"

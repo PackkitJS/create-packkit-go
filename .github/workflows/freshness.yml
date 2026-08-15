@@ -1,0 +1,17 @@
+name: Dependency freshness
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Mondays
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/options.ts' # the goVersion default
+      - 'src/generate.ts' # the emitted Dockerfile base images
+      - 'scripts/check-freshness.mjs'
+jobs:
+  freshness:
+    permissions:
+      contents: read
+      issues: write
+    uses: PackkitLabs/packkit-actions/.github/workflows/dependency-freshness.yml@v1
