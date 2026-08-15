@@ -7,6 +7,7 @@ import { provenance } from './provenance.js';
 import { buildBaseline } from './baseline.js';
 import { deriveDeploymentContract } from './deployment.js';
 import { licenseText } from './license.js';
+import { scaffoldFiles } from './scaffold.js';
 
 /** Generate a Go project in memory. Deterministic: same config → same bytes. */
 export function generate(
@@ -45,7 +46,12 @@ export function generate(
 		if (config.target === 'cli') files[`cmd/${pkg}/main.go`] = cliMainGo(config, pkg);
 	}
 	if (config.license !== 'none')
-		files['LICENSE'] = licenseText(config.license as 'MIT', authorName(config.author));
+		files['LICENSE'] = licenseText(
+			config.license as 'MIT' | 'Apache-2.0' | 'ISC',
+			authorName(config.author),
+		);
+	// Checklist-parity capabilities (editorconfig, CI, dependabot, community, agent guide).
+	Object.assign(files, scaffoldFiles(config));
 	if (config.release === 'goreleaser') {
 		files['.goreleaser.yaml'] = goreleaserConfig(config, pkg);
 		files['.github/workflows/release.yml'] = goreleaserWorkflow(config);

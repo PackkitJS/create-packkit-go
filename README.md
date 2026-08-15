@@ -44,10 +44,11 @@ Python generators do — `go-service` emits the language-neutral `service` contr
 --module <path>          go.mod module path (default: sanitized name)
 --description <text>
 --author "<name> <email>"
---license <MIT|none>     (default: MIT)
+--license <MIT|Apache-2.0|ISC|none>   (default: MIT)
 --go <1.x>               Minimum Go version (default: 1.23)
 --release <none|goreleaser>  GoReleaser config + tag-triggered release workflow (default: none)
 --here                   Scaffold into the current directory
+--no-git                 Skip initializing a git repository
 --force                  Overwrite existing files
 ```
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +41,7 @@ Options:
   --go <1.x>             Minimum Go version (default: 1.23)
   --release <none|goreleaser>  GoReleaser config + tag-triggered release workflow (default: none)
   --here                 Scaffold into the current directory
+  --no-git               Skip initializing a git repository
   --force                Overwrite existing files
   -h, --help             Show this help          -v, --version`;
 
@@ -56,6 +58,7 @@ function run(argv: string[]): void {
 			go: { type: 'string' },
 			release: { type: 'string' },
 			here: { type: 'boolean' },
+			'no-git': { type: 'boolean' },
 			force: { type: 'boolean' },
 			help: { type: 'boolean', short: 'h' },
 			version: { type: 'boolean', short: 'v' },
@@ -104,10 +107,26 @@ function run(argv: string[]): void {
 		console.log(
 			`Skipped ${skipped.length} existing file(s): ${skipped.join(', ')} (use --force to overwrite)`,
 		);
+	if (!values['no-git'] && initGit(dir)) console.log('Initialized a git repository.');
 	console.log('\nNext:');
 	if (dir !== '.') console.log(`  cd ${dir}`);
 	console.log('  go test ./...');
 	console.log('  go build ./...');
+}
+
+// Initialize a git repo with an initial commit — best-effort: skip silently if git is
+// missing or the target is already inside a repo (e.g. --here in an existing project).
+function initGit(dir: string): boolean {
+	const opts = { cwd: dir, stdio: 'ignore' as const };
+	if (spawnSync('git', ['rev-parse', '--is-inside-work-tree'], opts).status === 0) return false;
+	if (spawnSync('git', ['init', '-q'], opts).status !== 0) return false;
+	spawnSync('git', ['add', '-A'], opts);
+	spawnSync(
+		'git',
+		['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'Initial commit from create-packkit-go'],
+		opts,
+	);
+	return true;
 }
 
 try {

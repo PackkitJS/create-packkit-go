@@ -46,3 +46,33 @@ describe('release: goreleaser', () => {
 		);
 	});
 });
+
+// Completeness: every project carries the checklist `all`-scope capabilities, so Go is at
+// parity with JS/Python (see @packkit/core GENERATOR_CHECKLIST).
+describe('generator-checklist parity', () => {
+	it('emits the parity files (editorconfig, CI, dependabot, community, agent guide)', () => {
+		const files = Object.keys(generate({ name: 'demo' }).files);
+		for (const path of [
+			'.editorconfig',
+			'.github/workflows/ci.yml',
+			'.github/dependabot.yml',
+			'CONTRIBUTING.md',
+			'CODE_OF_CONDUCT.md',
+			'SECURITY.md',
+			'.github/ISSUE_TEMPLATE/bug_report.md',
+			'.github/ISSUE_TEMPLATE/feature_request.md',
+			'.github/PULL_REQUEST_TEMPLATE.md',
+			'AGENTS.md',
+			'CLAUDE.md',
+		]) {
+			expect(files, path).toContain(path);
+		}
+	});
+
+	it('supports Apache-2.0 and ISC licenses', () => {
+		expect(generate({ name: 'demo', license: 'Apache-2.0' }).files['LICENSE']).toContain(
+			'Apache License',
+		);
+		expect(generate({ name: 'demo', license: 'ISC' }).files['LICENSE']).toContain('ISC License');
+	});
+});

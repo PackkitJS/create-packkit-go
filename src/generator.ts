@@ -52,7 +52,7 @@ export const goGenerator: PackkitGenerator = {
 				{ id: 'module', description: 'go.mod module path, e.g. github.com/you/name' },
 				{ id: 'description' },
 				{ id: 'author', description: '"Name <email>"' },
-				{ id: 'license', choices: ['MIT', 'none'], default: 'MIT' },
+				{ id: 'license', choices: ['MIT', 'Apache-2.0', 'ISC', 'none'], default: 'MIT' },
 				{ id: 'target', choices: ['library', 'cli', 'worker', 'service'], default: 'library' },
 				{ id: 'goVersion', default: '1.23', description: 'Minimum Go version (go.mod directive)' },
 				{

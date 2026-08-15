@@ -3,7 +3,7 @@ import { modulePath } from './naming.js';
 import type { GoConfig, GoConfigInput, GoRelease, GoTarget } from './types.js';
 
 const TARGETS: GoTarget[] = ['library', 'cli', 'worker', 'service'];
-const LICENSES = ['MIT', 'none'];
+const LICENSES = ['MIT', 'Apache-2.0', 'ISC', 'none'];
 const RELEASES: GoRelease[] = ['none', 'goreleaser'];
 
 export function defaultConfig(): GoConfig {
