@@ -7,11 +7,13 @@
 //
 // Requires `go` on PATH (the CI workflow installs it with setup-go: true).
 // Usage: `node scripts/integration.mjs [preset...]`.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).status === 0;
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'cli.js');
 const ALL_PRESETS = ['go-lib', 'go-cli', 'go-worker', 'go-service'];
@@ -58,6 +60,27 @@ function integrate(preset) {
 				throw new Error(`CLI output did not greet as expected. Got: ${JSON.stringify(out)}`);
 			}
 			console.log(`  ✓ command greeted: ${out.trim()}`);
+		}
+
+		// The release feature is orthogonal to the toolchain, so exercise it once (on
+		// go-cli): re-scaffold with --release=goreleaser and, if `goreleaser` is on PATH,
+		// validate the emitted config with the real tool. `goreleaser check` needs a git
+		// repo with a remote, so seed a throwaway one. Skipped when goreleaser is absent
+		// (e.g. the standard CI runner) — the vitest suite still covers the config's shape.
+		if (preset === 'go-cli') {
+			const relName = `${name}-rel`;
+			sh(process.execPath, [CLI, preset, relName, '--release', 'goreleaser'], workdir);
+			const relProject = join(workdir, relName);
+			if (has('goreleaser')) {
+				execFileSync('git', ['init', '-q'], { cwd: relProject });
+				execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/PackkitLabs/demo.git'], {
+					cwd: relProject,
+				});
+				sh('goreleaser', ['check', '-f', '.goreleaser.yaml'], relProject);
+				console.log('  ✓ goreleaser check passed');
+			} else {
+				console.log('  · goreleaser not on PATH — skipping `goreleaser check` (config shape covered by unit tests)');
+			}
 		}
 		console.log(`=== ${preset}: PASS ===`);
 	} finally {

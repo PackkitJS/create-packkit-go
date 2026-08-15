@@ -46,6 +46,7 @@ Python generators do — `go-service` emits the language-neutral `service` contr
 --author "<name> <email>"
 --license <MIT|none>     (default: MIT)
 --go <1.x>               Minimum Go version (default: 1.23)
+--release <none|goreleaser>  GoReleaser config + tag-triggered release workflow (default: none)
 --here                   Scaffold into the current directory
 --force                  Overwrite existing files
 ```

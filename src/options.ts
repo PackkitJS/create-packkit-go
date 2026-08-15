@@ -1,9 +1,10 @@
 import { PackkitGoError } from './errors.js';
 import { modulePath } from './naming.js';
-import type { GoConfig, GoConfigInput, GoTarget } from './types.js';
+import type { GoConfig, GoConfigInput, GoRelease, GoTarget } from './types.js';
 
 const TARGETS: GoTarget[] = ['library', 'cli', 'worker', 'service'];
 const LICENSES = ['MIT', 'none'];
+const RELEASES: GoRelease[] = ['none', 'goreleaser'];
 
 export function defaultConfig(): GoConfig {
 	return {
@@ -14,6 +15,7 @@ export function defaultConfig(): GoConfig {
 		goVersion: '1.23',
 		target: 'library',
 		module: '',
+		release: 'none',
 	};
 }
 
@@ -47,6 +49,15 @@ export function normalizeConfig(input: GoConfigInput): GoConfig {
 			);
 		}
 		cfg.license = input.license;
+	}
+	if (input.release != null) {
+		if (!RELEASES.includes(input.release)) {
+			throw new PackkitGoError(
+				'INVALID_RELEASE',
+				`Unknown release "${input.release}". Expected one of: ${RELEASES.join(', ')}.`,
+			);
+		}
+		cfg.release = input.release;
 	}
 	if (input.module != null) cfg.module = String(input.module);
 	if (!cfg.module) cfg.module = modulePath(cfg.name);

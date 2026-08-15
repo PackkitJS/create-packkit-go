@@ -46,6 +46,10 @@ export function generate(
 	}
 	if (config.license !== 'none')
 		files['LICENSE'] = licenseText(config.license as 'MIT', authorName(config.author));
+	if (config.release === 'goreleaser') {
+		files['.goreleaser.yaml'] = goreleaserConfig(config, pkg);
+		files['.github/workflows/release.yml'] = goreleaserWorkflow(config);
+	}
 
 	const baseline = buildBaseline(files);
 	files['packkit.json'] = provenance(config, {
@@ -220,6 +224,21 @@ function readme(cfg: GoConfig, pkg: string): string {
 		);
 	} else {
 		lines.push('## Use', '', '```go', `import "${cfg.module}"`, '```', '');
+	}
+	if (cfg.release === 'goreleaser') {
+		lines.push(
+			'## Release',
+			'',
+			cfg.target === 'library'
+				? 'Releases are cut by [GoReleaser](https://goreleaser.com) on a version tag: it generates a changelog and publishes a GitHub Release (a library ships no binaries — consumers `go get` the tagged version).'
+				: 'Releases are cut by [GoReleaser](https://goreleaser.com) on a version tag: it cross-compiles binaries (linux/darwin/windows × amd64/arm64), packages archives + checksums, and publishes a GitHub Release with a generated changelog.',
+			'',
+			'```sh',
+			'git tag v0.1.0 && git push origin v0.1.0   # triggers the Release workflow',
+			'goreleaser release --snapshot --clean       # dry-run locally',
+			'```',
+			'',
+		);
 	}
 	return lines.join('\n');
 }
@@ -772,6 +791,101 @@ function gitignore(): string {
 		'',
 		'# Vendored dependencies',
 		'/vendor/',
+		'',
+	].join('\n');
+}
+
+// GoReleaser config + a tag-triggered workflow. GoReleaser is the idiomatic Go release
+// tool: on a version tag it cross-compiles binaries (for the cmd/ targets), packages
+// archives + checksums, and cuts a GitHub Release with an auto-generated changelog. A
+// library has no binary to build, so it releases in GoReleaser's library mode (skip the
+// build; still get the changelog + GitHub Release — consumers `go get module@vX.Y.Z`).
+function goreleaserConfig(cfg: GoConfig, pkg: string): string {
+	const hasBinary = cfg.target !== 'library';
+	const lines = [
+		'# GoReleaser — release automation on a version tag.',
+		'# Docs: https://goreleaser.com  ·  try locally: goreleaser release --snapshot --clean',
+		'version: 2',
+		'',
+		'before:',
+		'  hooks:',
+		'    - go mod tidy',
+		'',
+	];
+	if (hasBinary) {
+		lines.push(
+			'builds:',
+			`  - main: ./cmd/${pkg}`,
+			`    binary: ${pkg}`,
+			'    env: [CGO_ENABLED=0]',
+			'    goos: [linux, darwin, windows]',
+			'    goarch: [amd64, arm64]',
+			'',
+			'archives:',
+			'  - formats: [tar.gz]',
+			'    name_template: >-',
+			'      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}',
+			'    format_overrides:',
+			'      - goos: windows',
+			'        formats: [zip]',
+			'',
+			'checksum:',
+			"    name_template: 'checksums.txt'",
+			'',
+		);
+	} else {
+		lines.push(
+			'# A library ships no binary — skip the build and release source + a changelog only.',
+			'builds:',
+			'  - skip: true',
+			'',
+		);
+	}
+	lines.push(
+		'changelog:',
+		'  sort: asc',
+		'  filters:',
+		"    exclude: ['^docs:', '^test:', '^chore:', '^ci:']",
+		'',
+		'release:',
+		'  draft: false',
+		'',
+	);
+	return lines.join('\n');
+}
+
+// Tag-triggered release workflow. GoReleaser needs full history + tags (fetch-depth: 0)
+// to build the changelog, and the default GITHUB_TOKEN to create the Release. Emitted
+// into the user's project, so refs use readable moving tags, not SHAs.
+function goreleaserWorkflow(cfg: GoConfig): string {
+	return [
+		'name: Release',
+		'',
+		'# Cross-compile + publish a GitHub Release on a version tag, via GoReleaser.',
+		'# Bump nothing in code — just tag `vX.Y.Z` and push the tag.',
+		'on:',
+		'  push:',
+		"    tags: ['v*']",
+		'',
+		'permissions:',
+		'  contents: write # create the GitHub Release',
+		'',
+		'jobs:',
+		'  goreleaser:',
+		'    runs-on: ubuntu-latest',
+		'    steps:',
+		'      - uses: actions/checkout@v4',
+		'        with:',
+		'          fetch-depth: 0 # GoReleaser needs full history + tags for the changelog',
+		'      - uses: actions/setup-go@v5',
+		'        with:',
+		`          go-version: '${cfg.goVersion}'`,
+		'      - uses: goreleaser/goreleaser-action@v6',
+		'        with:',
+		"          version: '~> v2'",
+		'          args: release --clean',
+		'        env:',
+		'          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}',
 		'',
 	].join('\n');
 }

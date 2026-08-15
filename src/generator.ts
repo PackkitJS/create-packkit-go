@@ -55,6 +55,12 @@ export const goGenerator: PackkitGenerator = {
 				{ id: 'license', choices: ['MIT', 'none'], default: 'MIT' },
 				{ id: 'target', choices: ['library', 'cli', 'worker', 'service'], default: 'library' },
 				{ id: 'goVersion', default: '1.23', description: 'Minimum Go version (go.mod directive)' },
+				{
+					id: 'release',
+					choices: ['none', 'goreleaser'],
+					default: 'none',
+					description: 'GoReleaser config + tag-triggered release workflow',
+				},
 			],
 		};
 	},

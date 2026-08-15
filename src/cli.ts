@@ -38,6 +38,7 @@ Options:
   --author "<name> <email>"
   --license <MIT|none>   (default: MIT)
   --go <1.x>             Minimum Go version (default: 1.23)
+  --release <none|goreleaser>  GoReleaser config + tag-triggered release workflow (default: none)
   --here                 Scaffold into the current directory
   --force                Overwrite existing files
   -h, --help             Show this help          -v, --version`;
@@ -53,6 +54,7 @@ function run(argv: string[]): void {
 			author: { type: 'string' },
 			license: { type: 'string' },
 			go: { type: 'string' },
+			release: { type: 'string' },
 			here: { type: 'boolean' },
 			force: { type: 'boolean' },
 			help: { type: 'boolean', short: 'h' },
@@ -88,6 +90,7 @@ function run(argv: string[]): void {
 		...(values.author != null ? { author: values.author } : {}),
 		...(values.license != null ? { license: values.license } : {}),
 		...(values.go != null ? { goVersion: values.go } : {}),
+		...(values.release != null ? { release: values.release as GoConfigInput['release'] } : {}),
 	};
 
 	const project = generate(input, { preset: canonical, version: selfVersion() });
