@@ -1,6 +1,6 @@
 {
 	"name": "create-packkit-go",
-	"version": "0.3.3",
+	"version": "0.4.0",
 	"description": "Scaffold modern Go projects — go.mod modules, idiomatic layout, table tests — from a CLI or the browser. Packkit's Go generator.",
 	"homepage": "https://github.com/PackkitLabs/create-packkit-go#readme",
 	"bugs": {
