@@ -2,7 +2,9 @@
 
 > Scaffold a modern **Go** project — a `go.mod` module, idiomatic layout, table-style tests — from a CLI (and soon the browser). [Packkit](https://github.com/PackkitLabs/create-packkit)'s Go sibling.
 
-[![npm](https://img.shields.io/npm/v/create-packkit-go.svg)](https://www.npmjs.com/package/create-packkit-go) [![CI](https://github.com/PackkitLabs/create-packkit-go/actions/workflows/ci.yml/badge.svg)](https://github.com/PackkitLabs/create-packkit-go/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/create-packkit-go.svg)](https://www.npmjs.com/package/create-packkit-go) [![CI](https://github.com/PackkitLabs/create-packkit-go/actions/workflows/ci.yml/badge.svg)](https://github.com/PackkitLabs/create-packkit-go/actions/workflows/ci.yml) [![Configure on the web](https://img.shields.io/badge/⚙_configure-on_the_web-00e5ff)](https://packkit-web.pages.dev/?g=go) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> Prefer clicking to typing? **[Configure a Go project in the browser →](https://packkit-web.pages.dev/?g=go)** — pick options, preview the tree, download a zip (or copy the command). No install needed.
 
 Like `create-packkit` and `create-packkit-py`, this is a **JavaScript generator** —
 but its _output_ is an idiomatic Go project. The whole Packkit engine pattern (a
