@@ -1,6 +1,6 @@
 # create-packkit-go 🐹📦
 
-> Scaffold a modern **Go** project — a `go.mod` module, idiomatic layout, table-style tests — from a CLI (and soon the browser). [Packkit](https://github.com/PackkitLabs/create-packkit)'s Go sibling.
+> Scaffold a modern **Go** project — a `go.mod` module, idiomatic layout, table-style tests — from a CLI (and soon the browser). [Packkit](https://github.com/PackkitLabs/create-packkit-js)'s Go sibling.
 
 [![npm](https://img.shields.io/npm/v/create-packkit-go.svg)](https://www.npmjs.com/package/create-packkit-go) [![CI](https://github.com/PackkitLabs/create-packkit-go/actions/workflows/ci.yml/badge.svg)](https://github.com/PackkitLabs/create-packkit-go/actions/workflows/ci.yml) [![Configure on the web](https://img.shields.io/badge/⚙_configure-on_the_web-00e5ff)](https://packkit-web.pages.dev/?g=go) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
